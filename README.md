@@ -66,12 +66,13 @@ source .venv/bin/activate
 # On Windows:
 # .\.venv\Scripts\activate
 
-# 4) Install dependencies (choose one)
-# 4a) Default CPU option
+# 4) Install dependencies
+# Option A: CPU-only (default)
 uv sync
 
-# 4b) For CUDA GPU support (optional):
+# Option B: CUDA GPU support (uncomment both lines below). Run PyTorch install first and then other dependencies
 # uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+# uv sync
 
 # 5) Launch Jupyter
 jupyter lab
