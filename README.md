@@ -64,6 +64,16 @@ source .venv/bin/activate
 # 4) Install all dependencies (including OpenPIV)
 uv sync
 
+# 5) Install the correct PyTorch build for your hardware (GPU/CPU)
+# For NVIDIA GPUs with CUDA support:
+uv sync --group cuda
+
+# For CPU-only or Apple Silicon (MPS):
+uv sync --group cpu
+
+# Or install both and let the system auto-detect (default):
+uv sync
+
 # 5) Launch Jupyter
 jupyter lab
 ```
@@ -71,10 +81,12 @@ jupyter lab
 Notes:
 - Python pinned to 3.12 for PyTorch compatibility.
 - If you see NumPy ABI warnings with PyTorch, use `uv pip install "numpy<2"`.
+- Use `uv sync --group cuda` for NVIDIA GPU systems, `uv sync --group cpu` for CPU-only or Apple Silicon.
+- Default `uv sync` installs standard PyTorch (MPS-enabled on Apple Silicon, CPU on others).
 
 **Dependencies:**
 - Python 3.12
-- PyTorch (CPU): `torch`, `torchvision`
+- PyTorch (via dependency groups): `torch`, `torchvision`
 - Scientific computing: `numpy`, `scipy`, `pandas`, `matplotlib`, `scikit-image`, `scikit-learn`
 - PIV analysis: `openpiv`
 - Utilities: `seaborn`, `tqdm`, `tifffile`, `pillow`

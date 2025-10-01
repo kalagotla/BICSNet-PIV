@@ -26,6 +26,16 @@ dependencies = [
     "huggingface_hub>=0.25.0",
 ]
 
+[dependency-groups]
+cuda = [
+    "torch==2.2.2 --index-url https://download.pytorch.org/whl/cu121",
+    "torchvision==0.17.2 --index-url https://download.pytorch.org/whl/cu121",
+]
+cpu = [
+    "torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu",
+    "torchvision==0.17.2 --index-url https://download.pytorch.org/whl/cpu",
+]
+
 
 
 [tool.setuptools.packages.find]
