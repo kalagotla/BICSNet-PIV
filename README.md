@@ -69,7 +69,7 @@ jupyter lab
 ```
 
 Notes:
-- Python pinned to 3.12 for PyTorch compatibility on macOS x86_64.
+- Python pinned to 3.12 for PyTorch compatibility.
 - If you see NumPy ABI warnings with PyTorch, use `uv pip install "numpy<2"`.
 
 **Dependencies:**
