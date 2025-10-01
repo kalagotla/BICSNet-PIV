@@ -93,7 +93,7 @@ def uv_install(python_bin: str, packages: list[str]) -> None:
         except SystemExit:
             raise SystemExit("uv is required unless --pip is specified. Failed to install uv into the virtual environment.")
     # Target the specific interpreter using uv pip -p
-    run([python_bin, "-m", "uv", "pip", "-p", python_bin, "install", *packages])
+    run([python_bin, "-m", "uv", "pip", "install", *packages])
 
 
 def read_pyproject() -> dict:
