@@ -43,11 +43,26 @@ def run(cmd: list[str], env: dict[str, str] | None = None, cwd: Path | None = No
         raise SystemExit(f"Command failed: {' '.join(cmd)}")
 
 
-def create_virtualenv(venv_dir: Path, python_path: str | None) -> Path:
+def create_virtualenv_with_uv(venv_dir: Path, python_path: str | None, allow_pip: bool) -> Path:
     if venv_dir.exists():
         return venv_dir
-    python_exe = python_path or sys.executable
-    run([python_exe, "-m", "venv", str(venv_dir)])
+    # Prefer uv to create the venv (manages metadata used by uv sync)
+    try:
+        run([(python_path or sys.executable), "-m", "uv", "--version"])  # ensure uv visible
+    except SystemExit:
+        # install uv into bootstrap interpreter, then use it
+        if allow_pip:
+            run([python_path or sys.executable, "-m", "pip", "install", "uv"])  # install uv
+        # verify again (if it still fails, let uv venv attempt below handle)
+    uv_args = [(python_path or sys.executable), "-m", "uv", "venv"]
+    if python_path:
+        uv_args += ["--python", python_path]
+    uv_args += [str(venv_dir)]
+    try:
+        run(uv_args)
+    except SystemExit:
+        # fallback: stdlib venv as last resort
+        run([python_path or sys.executable, "-m", "venv", str(venv_dir)])
     return venv_dir
 
 
@@ -195,15 +210,26 @@ def main() -> None:
                 raise SystemExit(f"Python>={req_major}.{req_minor} required. Provide --python to select a compatible interpreter.")
 
     print(f"[1/6] Creating virtual environment at: {venv_dir}")
-    create_virtualenv(venv_dir, args.python)
+    # If using uv path (default), create venv via uv; else stdlib venv
+    if args.pip:
+        run([args.python or sys.executable, "-m", "venv", str(venv_dir)])
+    else:
+        create_virtualenv_with_uv(venv_dir, args.python, allow_pip=True)
     python_bin = venv_python(venv_dir)
 
-    print(f"[2/6] Installing base dependencies")
-    base_deps = read_base_dependencies()
+    print(f"[2/6] Installing project dependencies")
     if args.pip:
+        # pip path: install base deps then torch separately
+        base_deps = read_base_dependencies()
         pip_install(python_bin, base_deps)
     else:
-        uv_install(python_bin, base_deps)
+        # uv path: sync from pyproject/lock with appropriate group
+        try:
+            run([python_bin, "-m", "uv", "--version"])  # ensure uv in venv
+        except SystemExit:
+            # install uv into the venv and verify
+            run([python_bin, "-m", "pip", "install", "uv"])
+            run([python_bin, "-m", "uv", "--version"]) 
 
     print(f"[3/6] Installing PyTorch build")
     preferred = "auto"
@@ -228,7 +254,13 @@ def main() -> None:
         else:
             pip_install(python_bin, ["torch==2.2.2", "torchvision==0.17.2"]) 
     else:
-        install_torch(python_bin, preferred)
+        # With uv sync we install groups from pyproject
+        # First, run base sync, then add hardware-specific group
+        sync_cmd = [python_bin, "-m", "uv", "sync"]
+        # include the hardware group to ensure correct torch channel
+        if preferred in ("cuda", "cpu"):
+            sync_cmd += ["--group", preferred]
+        run(sync_cmd)
 
     print(f"[4/6] Verifying torch and CUDA availability")
     check_code = (
