@@ -59,10 +59,19 @@ cd BICSNet-PIV
 
 # 3) Create a clean Python 3.12 virtual environment
 uv venv --python 3.12 .venv
-source .venv/bin/activate
 
-# 4) Install all dependencies (including OpenPIV)
+# Activate the environment (choose based on your OS)
+# On macOS/Linux:
+source .venv/bin/activate
+# On Windows:
+# .\.venv\Scripts\activate
+
+# 4) Install dependencies (choose one)
+# 4a) Default CPU option
 uv sync
+
+# 4b) For CUDA GPU support (optional):
+# uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 
 # 5) Launch Jupyter
 jupyter lab
@@ -71,10 +80,11 @@ jupyter lab
 Notes:
 - Python pinned to 3.12 for PyTorch compatibility.
 - If you see NumPy ABI warnings with PyTorch, use `uv pip install "numpy<2"`.
+- The model automatically detects and uses available GPU hardware (CUDA > MPS > CPU).
 
 **Dependencies:**
 - Python 3.12
-- PyTorch (CPU): `torch`, `torchvision`
+- PyTorch: `torch`, `torchvision` (CPU/GPU support)
 - Scientific computing: `numpy`, `scipy`, `pandas`, `matplotlib`, `scikit-image`, `scikit-learn`
 - PIV analysis: `openpiv`
 - Utilities: `seaborn`, `tqdm`, `tifffile`, `pillow`
@@ -94,16 +104,6 @@ Notes:
 - Full dataset cannot be shared, but representative samples are included.  
 
 ---
-
-Example command:  
-```bash
-python train.py \
-  --data ./data/synthetic/ \
-  --epochs 100 \
-  --batch_size 36 \
-  --lr 1e-4 \
-  --checkpoint ./checkpoints/bicsnet.pth
-```
 
 Training details (as in paper):  
 - Optimizer: Adam  
