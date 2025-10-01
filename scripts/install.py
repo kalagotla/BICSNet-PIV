@@ -111,7 +111,7 @@ def read_base_dependencies() -> list[str]:
         raw = data.get("project", {}).get("dependencies", [])  # type: ignore[assignment]
         for dep in raw:
             low = dep.lower()
-            if low.startswith("torch"):
+            if low.startswith("torch") or low.startswith("numpy"):
                 continue
             deps.append(dep)
     except Exception:
@@ -119,7 +119,6 @@ def read_base_dependencies() -> list[str]:
         deps = [
             "matplotlib>=3.10.6",
             "jupyter>=1.1.1",
-            "numpy<2",
             "openpiv>=0.25.0",
             "pandas>=2.3.3",
             "pillow>=11.3.0",
@@ -217,21 +216,7 @@ def main() -> None:
         create_virtualenv_with_uv(venv_dir, args.python, allow_pip=True)
     python_bin = venv_python(venv_dir)
 
-    print(f"[2/6] Installing project dependencies")
-    if args.pip:
-        # pip path: install base deps then torch separately
-        base_deps = read_base_dependencies()
-        pip_install(python_bin, base_deps)
-    else:
-        # uv path: sync from pyproject/lock with appropriate group
-        try:
-            run([python_bin, "-m", "uv", "--version"])  # ensure uv in venv
-        except SystemExit:
-            # install uv into the venv and verify
-            run([python_bin, "-m", "pip", "install", "uv"])
-            run([python_bin, "-m", "uv", "--version"]) 
-
-    print(f"[3/6] Installing PyTorch build")
+    print(f"[2/6] Selecting PyTorch build (CUDA/CPU)")
     preferred = "auto"
     if args.cpu:
         preferred = "cpu"
@@ -239,8 +224,8 @@ def main() -> None:
         preferred = "cuda"
     else:
         preferred = "cuda" if detect_cuda_available() else "cpu"
+    print(f"[3/6] Installing PyTorch: {preferred}")
     if args.pip:
-        # Temporarily bypass uv path and use pip
         if preferred == "cuda":
             pip_install(python_bin, [
                 "torch==2.2.2", "torchvision==0.17.2",
@@ -254,15 +239,28 @@ def main() -> None:
         else:
             pip_install(python_bin, ["torch==2.2.2", "torchvision==0.17.2"]) 
     else:
-        # With uv sync we install groups from pyproject
-        # First, run base sync, then add hardware-specific group
-        sync_cmd = [python_bin, "-m", "uv", "sync"]
-        # include the hardware group to ensure correct torch channel
-        if preferred in ("cuda", "cpu"):
-            sync_cmd += ["--group", preferred]
-        run(sync_cmd)
+        # Install torch first using uv pip
+        if preferred == "cuda":
+            uv_install(python_bin, [
+                "torch==2.2.2", "torchvision==0.17.2",
+                "--index-url", "https://download.pytorch.org/whl/cu121",
+            ])
+        elif preferred == "cpu":
+            uv_install(python_bin, [
+                "torch==2.2.2", "torchvision==0.17.2",
+                "--index-url", "https://download.pytorch.org/whl/cpu",
+            ])
+        else:
+            uv_install(python_bin, ["torch==2.2.2", "torchvision==0.17.2"]) 
 
-    print(f"[4/6] Verifying torch and CUDA availability")
+    print(f"[4/6] Installing remaining dependencies (excluding numpy)")
+    base_deps = read_base_dependencies()
+    if args.pip:
+        pip_install(python_bin, base_deps)
+    else:
+        uv_install(python_bin, base_deps)
+
+    print(f"[5/6] Verifying torch and CUDA availability")
     check_code = (
         "import torch;\n"
         "print('torch', torch.__version__);\n"
@@ -272,14 +270,14 @@ def main() -> None:
     run([python_bin, "-c", check_code])
 
     if not args.no_kernel:
-        print(f"[5/6] Registering Jupyter kernel")
+        print(f"[6/6] Registering Jupyter kernel")
         kernel_name = "bicsnet-piv"
         display_name = f"Python ({kernel_name})"
         ensure_ipykernel(python_bin, kernel_name, display_name)
     else:
-        print(f"[5/6] Skipping Jupyter kernel registration")
+        print(f"[6/6] Skipping Jupyter kernel registration")
 
-    print(f"[6/6] Final import smoke test")
+    print(f"Final import smoke test")
     run([python_bin, "-c", "import numpy, openpiv; print('OK')"])  # basic import smoke test
 
     activate_hint = (
