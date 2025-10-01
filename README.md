@@ -80,12 +80,24 @@ Notes:
 - If you see NumPy ABI warnings with PyTorch, run inside the venv: `pip install "numpy<2"`.
 - On macOS with Apple Silicon, the default PyTorch build enables MPS acceleration automatically.
 
-**Dependencies:**
-- Python 3.12
-- PyTorch (via dependency groups): `torch`, `torchvision`
-- Scientific computing: `numpy`, `scipy`, `pandas`, `matplotlib`, `scikit-image`, `scikit-learn`
-- PIV analysis: `openpiv`
-- Utilities: `seaborn`, `tqdm`, `tifffile`, `pillow`
+---
+
+## ♻️ Uninstall
+
+Remove the virtual environment and the Jupyter kernel created by the installer:
+
+```bash
+# Prompt before removal
+python scripts/uninstall.py
+
+# Non-interactive (no prompts)
+python scripts/uninstall.py --yes
+
+# Options:
+#   Custom venv path    -> python scripts/uninstall.py --venv .venv-bicsnet
+#   Custom kernel name  -> python scripts/uninstall.py --kernel-name bicsnet-piv
+#   Keep kernel only    -> python scripts/uninstall.py --keep-kernel
+```
 
 ---
 
@@ -103,15 +115,6 @@ Notes:
 
 ---
 
-Example command:  
-```bash
-python train.py \
-  --data ./data/synthetic/ \
-  --epochs 100 \
-  --batch_size 36 \
-  --lr 1e-4 \
-  --checkpoint ./checkpoints/bicsnet.pth
-```
 
 Training details (as in paper):  
 - Optimizer: Adam  
