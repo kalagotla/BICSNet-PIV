@@ -70,8 +70,8 @@ source .venv/bin/activate
 # Option A: CPU-only (default)
 uv sync --extra cpu
 
-# Option B: CUDA GPU support (uncomment both lines below)
-# uv sync --extra gpu
+# Option B: CUDA GPU support
+# uv sync --extra cu128
 
 # 5) Launch Jupyter
 jupyter lab
