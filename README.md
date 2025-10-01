@@ -66,8 +66,8 @@ source .venv/bin/activate
 # 4) Install all dependencies (including OpenPIV)
 uv sync
 
-# 5) (Optional) Jupyter kernel
-python -m ipykernel install --user --name bicsnet-piv --display-name "Python (BICSNet-PIV)"
+# 5) Launch Jupyter
+jupyter lab
 ```
 
 Notes:
