@@ -13,13 +13,16 @@ import subprocess
 import sys
 import platform
 import argparse
+import os
 from pathlib import Path
 
 
 def run_command(cmd, check=True):
     """Run a command and return the result."""
     try:
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, check=check)
+        # Use appropriate shell for the platform
+        shell = True if platform.system() == "Windows" else True
+        result = subprocess.run(cmd, shell=shell, capture_output=True, text=True, check=check)
         return result.stdout.strip(), result.stderr.strip()
     except subprocess.CalledProcessError as e:
         print(f"Error running command: {cmd}")
@@ -30,7 +33,7 @@ def run_command(cmd, check=True):
 def check_cuda_available():
     """Check if CUDA is available on the system."""
     try:
-        # Try to run nvidia-smi
+        # Try to run nvidia-smi (works on both Windows and Linux)
         stdout, stderr = run_command("nvidia-smi", check=False)
         if stdout and "NVIDIA" in stdout:
             return True
@@ -43,6 +46,24 @@ def check_cuda_available():
         return torch.cuda.is_available()
     except ImportError:
         pass
+    
+    # Windows-specific CUDA detection
+    if platform.system() == "Windows":
+        try:
+            # Check for CUDA in common Windows locations
+            cuda_paths = [
+                r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA",
+                r"C:\Program Files\NVIDIA Corporation\NVSMI",
+                os.path.expandvars(r"%CUDA_PATH%"),
+                os.path.expandvars(r"%CUDA_PATH_V11_8%"),
+                os.path.expandvars(r"%CUDA_PATH_V12_1%"),
+            ]
+            
+            for path in cuda_paths:
+                if path and os.path.exists(path):
+                    return True
+        except:
+            pass
     
     return False
 
@@ -72,6 +93,25 @@ def get_cuda_version():
                     return version
     except:
         pass
+    
+    # Windows-specific CUDA version detection
+    if platform.system() == "Windows":
+        try:
+            # Check environment variables for CUDA version
+            cuda_path = os.path.expandvars(r"%CUDA_PATH%")
+            if cuda_path and os.path.exists(cuda_path):
+                # Extract version from path like "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.1"
+                version_match = os.path.basename(cuda_path)
+                if version_match.startswith('v'):
+                    return version_match[1:]  # Remove 'v' prefix
+            
+            # Check for version-specific environment variables
+            for version in ['11.8', '12.1', '12.4']:
+                env_var = f"CUDA_PATH_V{version.replace('.', '_')}"
+                if os.path.expandvars(f"%{env_var}%"):
+                    return version
+        except:
+            pass
     
     return None
 
@@ -153,7 +193,11 @@ def main():
     stdout, stderr = run_command("uv --version", check=False)
     if stdout is None:
         print("❌ uv package manager not found. Please install uv first:")
-        print("curl -LsSf https://astral.sh/uv/install.sh | sh")
+        if platform.system() == "Windows":
+            print("Windows: powershell -c \"irm https://astral.sh/uv/install.ps1 | iex\"")
+            print("Or download from: https://github.com/astral-sh/uv/releases")
+        else:
+            print("Linux/macOS: curl -LsSf https://astral.sh/uv/install.sh | sh")
         sys.exit(1)
     
     print(f"✅ Found uv: {stdout}")
@@ -189,8 +233,12 @@ def main():
         verify_installation()
         print("\n✅ Installation completed successfully!")
         print("\nNext steps:")
-        print("1. Activate your virtual environment: source .venv/bin/activate")
-        print("2. Run the inference script: python src/pivnet_image_gen.py")
+        if platform.system() == "Windows":
+            print("1. Activate your virtual environment: .venv\\Scripts\\activate")
+            print("2. Run the inference script: python src\\pivnet_image_gen.py")
+        else:
+            print("1. Activate your virtual environment: source .venv/bin/activate")
+            print("2. Run the inference script: python src/pivnet_image_gen.py")
     else:
         print("\n❌ Installation failed. Please check the error messages above.")
         sys.exit(1)

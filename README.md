@@ -33,8 +33,10 @@ BICSNet-PIV/
 │   └── best_model.pth               # Trained BICSNet weights
 │
 │── scripts/
-│   ├── install_pytorch.py           # PyTorch installation script
-│   └── test_pytorch_install.py      # Installation verification script
+│   ├── install_pytorch.py           # Cross-platform PyTorch installation script
+│   ├── test_pytorch_install.py      # Installation verification script
+│   ├── install_windows.bat          # Windows batch installation script
+│   └── install_windows.ps1          # Windows PowerShell installation script
 │
 │── src/
 │   ├── bicsnet.py                   # Model definition
@@ -55,6 +57,7 @@ This repo uses `uv` for environment management and automatically installs the ap
 
 ### Quick Installation
 
+#### Linux/macOS
 ```bash
 # 1) Install uv (if not already)
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -75,6 +78,47 @@ uv sync
 
 # 6) Test the installation (optional)
 python scripts/test_pytorch_install.py
+
+# 7) Launch Jupyter
+jupyter lab
+```
+
+#### Windows
+
+**Option 1: Automated Installation (Recommended)**
+```cmd
+# Double-click or run from Command Prompt
+scripts\install_windows.bat
+```
+
+**Option 2: PowerShell Installation**
+```powershell
+# Run in PowerShell (as Administrator if needed)
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+.\scripts\install_windows.ps1
+```
+
+**Option 3: Manual Installation**
+```cmd
+# 1) Install uv (if not already)
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# 2) Clone and enter the project
+git clone https://github.com/kalagotla/BICSNet-PIV.git
+cd BICSNet-PIV
+
+# 3) Create a clean Python 3.12 virtual environment
+uv venv --python 3.12 .venv
+.venv\Scripts\activate
+
+# 4) Install PyTorch with automatic GPU/CPU detection
+python scripts\install_pytorch.py
+
+# 5) Install remaining dependencies
+uv sync
+
+# 6) Test the installation (optional)
+python scripts\test_pytorch_install.py
 
 # 7) Launch Jupyter
 jupyter lab
@@ -125,6 +169,12 @@ python scripts/install_pytorch.py --cuda-version 118  # or 121, 124, etc.
 - CUDA 11.8+ (recommended: CUDA 12.1)
 - Compatible drivers
 
+**Windows Requirements:**
+- Windows 10/11 (64-bit)
+- Python 3.12 (from python.org or Microsoft Store)
+- Command Prompt or PowerShell
+- Git for Windows (for cloning the repository)
+
 **Notes:**
 - Python pinned to 3.12 for PyTorch compatibility
 - The installation script automatically detects CUDA availability
@@ -143,6 +193,13 @@ python scripts/test_pytorch_install.py
 2. **PyTorch import errors:** Try reinstalling with `python scripts/install_pytorch.py --force-cpu`
 3. **NumPy compatibility:** Run `uv pip install "numpy<2"` if you see ABI warnings
 4. **Apple Silicon:** MPS support is automatically detected and used if available
+
+**Windows-specific issues:**
+
+1. **PowerShell execution policy:** Run `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
+2. **uv not found after installation:** Restart Command Prompt or add `%USERPROFILE%\.cargo\bin` to PATH
+3. **CUDA detection on Windows:** Ensure CUDA toolkit is installed and `CUDA_PATH` environment variable is set
+4. **Virtual environment activation:** Use `.venv\Scripts\activate` (not `source .venv/bin/activate`)
 
 ---
 
