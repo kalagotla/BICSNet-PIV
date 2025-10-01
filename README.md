@@ -45,44 +45,40 @@ BICSNet-PIV/
 
 ---
 
-## ⚙️ Installation (uv + Python 3.12)
+## ⚙️ One-command installation (Windows, macOS, Linux)
 
-This repo uses `uv` for environment management and locking.
+Use the bundled Python installer. It will create a virtual environment, install dependencies with `uv` by default (auto-installs `uv` into the venv if missing), pick the right PyTorch build (CUDA/CPU) automatically, and register a Jupyter kernel. Use `--pip` to force `pip` instead.
 
 ```bash
-# 1) Install uv (if not already)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# 2) Clone and enter the project
-git clone https://github.com/<your-username>/BICSNet-PIV.git
+# 1) Clone and enter the project
+git clone https://github.com/kalagotla/BICSNet-PIV.git
 cd BICSNet-PIV
 
-# 3) Create a clean Python 3.12 virtual environment
-uv venv --python 3.12 .venv
+# 2) Run the installer (auto-detect CUDA vs CPU; uses uv by default)
+python scripts/install.py
+
+# Optional:
+#   Force CPU-only         -> python scripts/install.py --cpu
+#   Force CUDA (NVIDIA)    -> python scripts/install.py --cuda
+#   Custom venv location   -> python scripts/install.py --venv .venv-bicsnet
+#   Choose interpreter     -> python scripts/install.py --python /path/to/python3.12
+#   Use pip instead of uv  -> python scripts/install.py --pip
+#   Skip Jupyter kernel    -> python scripts/install.py --no-kernel
+
+# 3) Activate the environment
+# macOS/Linux:
 source .venv/bin/activate
+# Windows (PowerShell):
+.\.venv\Scripts\Activate.ps1
 
-# 4) Install all dependencies (including OpenPIV)
-uv sync
-
-# 5) Install the correct PyTorch build for your hardware (GPU/CPU)
-# For NVIDIA GPUs with CUDA support:
-uv sync --group cuda
-
-# For CPU-only or Apple Silicon (MPS):
-uv sync --group cpu
-
-# Or install both and let the system auto-detect (default):
-uv sync
-
-# 5) Launch Jupyter
+# 4) Launch Jupyter
 jupyter lab
 ```
 
 Notes:
-- Python pinned to 3.12 for PyTorch compatibility.
-- If you see NumPy ABI warnings with PyTorch, use `uv pip install "numpy<2"`.
-- Use `uv sync --group cuda` for NVIDIA GPU systems, `uv sync --group cpu` for CPU-only or Apple Silicon.
-- Default `uv sync` installs standard PyTorch (MPS-enabled on Apple Silicon, CPU on others).
+- Python 3.12 is recommended and pinned in `.python-version`. The installer enforces the minimum version from `pyproject.toml` and supports `--python` to select an interpreter.
+- If you see NumPy ABI warnings with PyTorch, run inside the venv: `pip install "numpy<2"`.
+- On macOS with Apple Silicon, the default PyTorch build enables MPS acceleration automatically.
 
 **Dependencies:**
 - Python 3.12
