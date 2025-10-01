@@ -1,5 +1,6 @@
 # File to generate images from the BICSNet model
 
+import argparse
 import torch
 from bicsnet import Net
 from loader import PIVDataset
@@ -61,7 +62,7 @@ def rename_files(directory: str):
     return
 
 
-def generate_images(model, test_loader, device, save_dir1: str, save_dir2: str):
+def generate_images(model, test_loader, device, save_dir1: str, save_dir2: str, max_images: int | None = None):
     count = 0
     model.eval()
     with torch.no_grad():
@@ -72,6 +73,8 @@ def generate_images(model, test_loader, device, save_dir1: str, save_dir2: str):
             outputs1, outputs2 = model(inputs1, inputs2, scalars)
             # save the model outputs as two PIV snaps in the save_dir with the same name as the input snaps
             for i in tqdm(range(len(outputs1)), desc='        Saving images'):
+                if max_images is not None and count >= max_images:
+                    return
                 # get the snaps in 3x256x256 format
                 snap1 = outputs1[i, ...].cpu().numpy()
                 snap2 = outputs2[i, ...].cpu().numpy()
@@ -101,15 +104,38 @@ def generate_images(model, test_loader, device, save_dir1: str, save_dir2: str):
     return
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description='Generate images from BICSNet model')
+    # Data and IO
+    parser.add_argument('--data-dir', type=str, default='./data/test_images/', help='Directory with input test images')
+    parser.add_argument('--save-dir1', type=str, default=None, help='Output directory for first image stream')
+    parser.add_argument('--save-dir2', type=str, default=None, help='Output directory for second image stream')
+    parser.add_argument('--checkpoint', type=str, default='./checkpoints/best_model.pth', help='Path to model checkpoint')
+    parser.add_argument('--batch-size', type=int, default=8, help='Batch size for inference')
+    parser.add_argument('--limit', type=int, default=None, help='Limit total number of images to generate')
+    # Model configuration
+    parser.add_argument('--num-encoder', type=int, default=5, help='Number of encoder layers')
+    parser.add_argument('--num-decoder', type=int, default=5, help='Number of decoder layers')
+    parser.add_argument('--use-scalars', action='store_true', default=True, help='Use scalar embeddings')
+    parser.add_argument('--no-use-scalars', dest='use_scalars', action='store_false', help='Disable scalar embeddings')
+    parser.add_argument('--scalar-dim', type=int, default=2, help='Scalar input dimension')
+    parser.add_argument('--embed-dim', type=int, default=128, help='Scalar embedding dimension')
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    base_path = './data/test_images/'
-    # remove associated model output folders
+    args = parse_args()
+
+    base_path = args.data_dir
+    # derive output folders
     folders = ['model_outputs1', 'model_outputs2']
-    # check if the folders exist and create them if they don't
-    Path(base_path + folders[0]).mkdir(parents=True, exist_ok=True)
-    Path(base_path + folders[1]).mkdir(parents=True, exist_ok=True)
-    for folder in folders:
-        path = os.path.join(base_path, folder)
+    save_dir1 = args.save_dir1 if args.save_dir1 is not None else os.path.join(base_path, folders[0])
+    save_dir2 = args.save_dir2 if args.save_dir2 is not None else os.path.join(base_path, folders[1])
+
+    # ensure output directories exist and are clean
+    Path(save_dir1).mkdir(parents=True, exist_ok=True)
+    Path(save_dir2).mkdir(parents=True, exist_ok=True)
+    for path in [save_dir1, save_dir2]:
         for filename in os.listdir(path):
             os.remove(os.path.join(path, filename))
     # Select best available device adaptively: CUDA > MPS (Apple Silicon) > CPU
@@ -123,14 +149,12 @@ if __name__ == "__main__":
         device = torch.device('mps')
     else:
         device = torch.device('cpu')
-    model_dir = './checkpoints/'
-    save_dir1 = base_path + folders[0]
-    save_dir2 = base_path + folders[1]
+    model_dir = os.path.dirname(args.checkpoint) if os.path.dirname(args.checkpoint) else './checkpoints/'
 
     # load the model
-    num_layers_encoder, num_layers_decoder = 5, 5  # Number of layers in encoder and decoder
-    use_scalars = True  # Use scalar embeddings
-    scalars_input_dim, scalar_embed_dim = 2, 128  # Scalar input dimension and embedding dimension
+    num_layers_encoder, num_layers_decoder = args.num_encoder, args.num_decoder
+    use_scalars = args.use_scalars
+    scalars_input_dim, scalar_embed_dim = args.scalar_dim, args.embed_dim
     model = Net(num_layers_encoder=num_layers_encoder, num_layers_decoder=num_layers_decoder, use_scalars=use_scalars,
                 scalar_input_dim=scalars_input_dim, scalar_embed_dim=scalar_embed_dim)
     # Wrap with DataParallel only if multiple CUDA GPUs are available
@@ -138,7 +162,11 @@ if __name__ == "__main__":
         model = torch.nn.DataParallel(model)
 
     # Load checkpoint to the selected device (handles CPU/MPS/CUDA)
-    state_dict = torch.load(model_dir + 'best_model.pth', map_location=device)
+    # Resolve checkpoint path
+    ckpt_path = args.checkpoint if os.path.isabs(args.checkpoint) else os.path.join(model_dir, os.path.basename(args.checkpoint))
+    if not os.path.exists(ckpt_path):
+        raise FileNotFoundError(f"Checkpoint not found at {ckpt_path}")
+    state_dict = torch.load(ckpt_path, map_location=device)
 
     # Load the state dict robustly regardless of DataParallel prefixing
     try:
@@ -165,9 +193,9 @@ if __name__ == "__main__":
     model.to(device)
 
     # load all data without split
-    test_loader = load_data(base_path, 8)
+    test_loader = load_data(base_path, args.batch_size)
 
     # generate the images
-    generate_images(model, test_loader, device, save_dir1, save_dir2)
+    generate_images(model, test_loader, device, save_dir1, save_dir2, max_images=args.limit)
 
     print('Images generated successfully')
