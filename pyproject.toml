@@ -11,8 +11,8 @@ dependencies = [
     "matplotlib>=3.10.6",
     "jupyter>=1.1.1",
     "numpy<2",
-    "torch==2.2.2",
-    "torchvision==0.17.2",
+    "torch>=2.2.0",
+    "torchvision>=0.17.0",
     "openpiv>=0.25.0",
     "pandas>=2.3.3",
     "pillow>=11.3.0",
@@ -25,6 +25,16 @@ dependencies = [
     "ipykernel>=6.30.1",
     "huggingface_hub>=0.25.0",
 ]
+
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cuda"
+url = "https://download.pytorch.org/whl/cu121"
+explicit = true
 
 
 

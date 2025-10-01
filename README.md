@@ -32,6 +32,10 @@ BICSNet-PIV/
 │── checkpoints/
 │   └── best_model.pth               # Trained BICSNet weights
 │
+│── scripts/
+│   ├── install_pytorch.py           # PyTorch installation script
+│   └── test_pytorch_install.py      # Installation verification script
+│
 │── src/
 │   ├── bicsnet.py                   # Model definition
 │   ├── loader.py                    # Dataset + transforms
@@ -47,7 +51,9 @@ BICSNet-PIV/
 
 ## ⚙️ Installation (uv + Python 3.12)
 
-This repo uses `uv` for environment management and locking.
+This repo uses `uv` for environment management and automatically installs the appropriate PyTorch version (GPU/CPU) based on your system.
+
+### Quick Installation
 
 ```bash
 # 1) Install uv (if not already)
@@ -61,23 +67,82 @@ cd BICSNet-PIV
 uv venv --python 3.12 .venv
 source .venv/bin/activate
 
-# 4) Install all dependencies (including OpenPIV)
+# 4) Install PyTorch with automatic GPU/CPU detection
+python scripts/install_pytorch.py
+
+# 5) Install remaining dependencies
 uv sync
 
-# 5) Launch Jupyter
+# 6) Test the installation (optional)
+python scripts/test_pytorch_install.py
+
+# 7) Launch Jupyter
 jupyter lab
 ```
 
-Notes:
-- Python pinned to 3.12 for PyTorch compatibility.
-- If you see NumPy ABI warnings with PyTorch, use `uv pip install "numpy<2"`.
+### Manual PyTorch Installation
+
+If you prefer manual control over PyTorch installation:
+
+**For GPU (CUDA) support:**
+```bash
+# Install PyTorch with CUDA 12.1 support
+uv add --index-url https://download.pytorch.org/whl/cu121 torch torchvision
+
+# Or for CUDA 11.8
+uv add --index-url https://download.pytorch.org/whl/cu118 torch torchvision
+```
+
+**For CPU-only:**
+```bash
+# Install PyTorch CPU-only version
+uv add --index-url https://download.pytorch.org/whl/cpu torch torchvision
+```
+
+### Installation Options
+
+The `scripts/install_pytorch.py` script supports several options:
+
+```bash
+# Force CPU-only installation (even if CUDA is available)
+python scripts/install_pytorch.py --force-cpu
+
+# Specify CUDA version for GPU installation
+python scripts/install_pytorch.py --cuda-version 118  # or 121, 124, etc.
+```
+
+### System Requirements
 
 **Dependencies:**
 - Python 3.12
-- PyTorch (CPU): `torch`, `torchvision`
+- PyTorch: `torch`, `torchvision` (GPU/CPU auto-detected)
 - Scientific computing: `numpy`, `scipy`, `pandas`, `matplotlib`, `scikit-image`, `scikit-learn`
 - PIV analysis: `openpiv`
 - Utilities: `seaborn`, `tqdm`, `tifffile`, `pillow`
+
+**GPU Requirements (optional):**
+- NVIDIA GPU with CUDA support
+- CUDA 11.8+ (recommended: CUDA 12.1)
+- Compatible drivers
+
+**Notes:**
+- Python pinned to 3.12 for PyTorch compatibility
+- The installation script automatically detects CUDA availability
+- If you see NumPy ABI warnings with PyTorch, use `uv pip install "numpy<2"`
+
+### Troubleshooting
+
+**Test your installation:**
+```bash
+python scripts/test_pytorch_install.py
+```
+
+**Common issues:**
+
+1. **CUDA not detected:** Ensure NVIDIA drivers and CUDA toolkit are installed
+2. **PyTorch import errors:** Try reinstalling with `python scripts/install_pytorch.py --force-cpu`
+3. **NumPy compatibility:** Run `uv pip install "numpy<2"` if you see ABI warnings
+4. **Apple Silicon:** MPS support is automatically detected and used if available
 
 ---
 
