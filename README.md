@@ -63,10 +63,8 @@ cd BICSNet-PIV
 uv venv --python 3.12 .venv
 source .venv/bin/activate
 
-# 4) Minimal runtime deps (start small; add as needed)
-uv pip install torch torchvision
-# Common extras used by scripts (optional, install on demand)
-uv pip install scikit-image scikit-learn seaborn tqdm
+# 4) Install all dependencies (including OpenPIV)
+uv sync
 
 # 5) (Optional) Jupyter kernel
 python -m ipykernel install --user --name bicsnet-piv --display-name "Python (BICSNet-PIV)"
@@ -76,12 +74,12 @@ Notes:
 - Python pinned to 3.12 for PyTorch compatibility on macOS x86_64.
 - If you see NumPy ABI warnings with PyTorch, use `uv pip install "numpy<2"`.
 
-**Minimal Dependencies (core):**
+**Dependencies:**
 - Python 3.12
 - PyTorch (CPU): `torch`, `torchvision`
-
-**Optional (commonly used):**
-- `scikit-image`, `scikit-learn`, `seaborn`, `tqdm`, `pandas`, `matplotlib`, `tifffile`
+- Scientific computing: `numpy`, `scipy`, `pandas`, `matplotlib`, `scikit-image`, `scikit-learn`
+- PIV analysis: `openpiv`
+- Utilities: `seaborn`, `tqdm`, `tifffile`, `pillow`
 
 ---
 
