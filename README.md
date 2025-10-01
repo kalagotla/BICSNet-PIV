@@ -54,7 +54,7 @@ This repo uses `uv` for environment management and locking.
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # 2) Clone and enter the project
-git clone https://github.com/<your-username>/BICSNet-PIV.git
+git clone https://github.com/kalagotla/BICSNet-PIV.git
 cd BICSNet-PIV
 
 # 3) Create a clean Python 3.12 virtual environment
