@@ -1,0 +1,34 @@
+[project]
+name = "bicsnet-piv"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "kal", email = "dilipkalagotla@gmail.com" }
+]
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "matplotlib>=3.10.6",
+    "numpy>=2.3.3",
+    "pandas>=2.3.3",
+    "pillow>=11.3.0",
+    "scikit-image>=0.25.2",
+    "scikit-learn>=1.7.2",
+    "scipy>=1.16.2",
+    "seaborn>=0.13.2",
+    "tifffile>=2025.9.30",
+    "tqdm>=4.67.1",
+]
+
+[project.scripts]
+bicsnet-piv = "bicsnet_piv:main"
+
+[build-system]
+requires = ["uv_build>=0.8.17,<0.9.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ipykernel>=6.30.1",
+    "jupyter>=1.1.1",
+]

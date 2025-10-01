@@ -1,4 +1,4 @@
-# File to generate images from the PIVNet model
+# File to generate images from the BICSNet model
 
 import torch
 from bicsnet import Net
@@ -6,10 +6,10 @@ from loader import PIVDataset
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import platform
 from tqdm import tqdm
 import seaborn as sns
 from pathlib import Path
-from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 # Strip the "module." prefix from all keys -- to run on CPU
 from collections import OrderedDict
@@ -18,20 +18,13 @@ sns.set_theme('paper')
 # set the default data type to float64
 torch.set_default_dtype(torch.float64)
 
-def load_data(dataset_dir: str, test_size: float, random_state: int, batch_size: int):
-    dataset = PIVDataset(root_dir=dataset_dir)  # Load the dataset
-    train_indices, test_indices = train_test_split(range(len(dataset)), test_size=test_size, random_state=random_state)
-    train_indices, val_indices = train_test_split(train_indices, test_size=test_size, random_state=random_state)
-
-    # Create subsets and data loaders for each split
-    train_set = torch.utils.data.Subset(dataset, train_indices)
-    test_set = torch.utils.data.Subset(dataset, test_indices)
-    val_set = torch.utils.data.Subset(dataset, val_indices)
-
-    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
-    val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
-    return train_loader, test_loader, val_loader
+def load_data(dataset_dir: str, batch_size: int):
+    """
+    Load all images from the dataset directory into a single DataLoader without splitting.
+    """
+    dataset = PIVDataset(root_dir=dataset_dir)
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    return loader
 
 
 def save_image(image, directory: str, name: str):
@@ -109,63 +102,72 @@ def generate_images(model, test_loader, device, save_dir1: str, save_dir2: str):
 
 
 if __name__ == "__main__":
-    for i in range(768, 2304+128, 128):
-        base_path = '../data/FSU_first_shock/' + str(i) + '/'
-        # remove associated model output folders
-        folders = ['model_outputs1', 'model_outputs2']
-        # check if the folders exist and create them if they don't
-        Path(base_path + folders[0]).mkdir(parents=True, exist_ok=True)
-        Path(base_path + folders[1]).mkdir(parents=True, exist_ok=True)
-        for folder in folders:
-            path = os.path.join(base_path, folder)
-            for filename in os.listdir(path):
-                os.remove(os.path.join(path, filename))
-        # use cpu for visualization
-        if torch.cuda.is_available():
-            device = torch.device('cuda')
-        else:
-            device = torch.device('cpu')
-        model_dir = '../data/bicsnet/'
-        save_dir1 = base_path + folders[0]
-        save_dir2 = base_path + folders[1]
+    base_path = './data/test_images/'
+    # remove associated model output folders
+    folders = ['model_outputs1', 'model_outputs2']
+    # check if the folders exist and create them if they don't
+    Path(base_path + folders[0]).mkdir(parents=True, exist_ok=True)
+    Path(base_path + folders[1]).mkdir(parents=True, exist_ok=True)
+    for folder in folders:
+        path = os.path.join(base_path, folder)
+        for filename in os.listdir(path):
+            os.remove(os.path.join(path, filename))
+    # Select best available device adaptively: CUDA > MPS (Apple Silicon) > CPU
+    if torch.cuda.is_available():
+        device = torch.device('cuda')
+    elif (
+        hasattr(torch.backends, 'mps')
+        and torch.backends.mps.is_available()
+        and platform.machine().lower() == 'arm64'
+    ):
+        device = torch.device('mps')
+    else:
+        device = torch.device('cpu')
+    model_dir = './checkpoints/'
+    save_dir1 = base_path + folders[0]
+    save_dir2 = base_path + folders[1]
 
-        # load the model
-        num_layers_encoder, num_layers_decoder = 5, 5  # Number of layers in encoder and decoder
-        use_scalars = True  # Use scalar embeddings
-        scalars_input_dim, scalar_embed_dim = 2, 128  # Scalar input dimension and embedding dimension
-        model = Net(num_layers_encoder=num_layers_encoder, num_layers_decoder=num_layers_decoder, use_scalars=use_scalars,
-                    scalar_input_dim=scalars_input_dim, scalar_embed_dim=scalar_embed_dim)
-        # use the line below to load model from multiple GPUs
+    # load the model
+    num_layers_encoder, num_layers_decoder = 5, 5  # Number of layers in encoder and decoder
+    use_scalars = True  # Use scalar embeddings
+    scalars_input_dim, scalar_embed_dim = 2, 128  # Scalar input dimension and embedding dimension
+    model = Net(num_layers_encoder=num_layers_encoder, num_layers_decoder=num_layers_decoder, use_scalars=use_scalars,
+                scalar_input_dim=scalars_input_dim, scalar_embed_dim=scalar_embed_dim)
+    # Wrap with DataParallel only if multiple CUDA GPUs are available
+    if device.type == 'cuda' and torch.cuda.device_count() > 1:
         model = torch.nn.DataParallel(model)
-        # Load the original state_dict
-        state_dict = torch.load(model_dir + 'best_model.pth')
 
-        # new_state_dict = OrderedDict()
-        # for k, v in state_dict.items():
-        #     new_key = k.replace("module.", "")  # Remove "module." prefix
-        #     new_state_dict[new_key] = v
-        # state_dict = new_state_dict.copy()
+    # Load checkpoint to the selected device (handles CPU/MPS/CUDA)
+    state_dict = torch.load(model_dir + 'best_model.pth', map_location=device)
 
-        # Load the modified state_dict into the model
-        model.load_state_dict(state_dict)
-        model.to(device)
+    # Load the state dict robustly regardless of DataParallel prefixing
+    try:
+        model.load_state_dict(state_dict, strict=True)
+    except Exception:
+        # Handle mismatch of 'module.' prefix
+        keys = list(state_dict.keys())
+        if len(keys) > 0 and keys[0].startswith('module.'):
+            # Strip 'module.' if model is not DataParallel
+            if not isinstance(model, torch.nn.DataParallel):
+                from collections import OrderedDict
+                new_state_dict = OrderedDict((k.replace('module.', ''), v) for k, v in state_dict.items())
+                model.load_state_dict(new_state_dict, strict=False)
+            else:
+                raise
+        else:
+            # Add 'module.' if model is DataParallel
+            if isinstance(model, torch.nn.DataParallel):
+                from collections import OrderedDict
+                new_state_dict = OrderedDict((f'module.{k}', v) for k, v in state_dict.items())
+                model.load_state_dict(new_state_dict, strict=False)
+            else:
+                raise
+    model.to(device)
 
-        # load the data
-        test_loader = load_data(base_path, 0.90, 43, 8)[1]
+    # load all data without split
+    test_loader = load_data(base_path, 8)
 
-        # generate the images
-        generate_images(model, test_loader, device, save_dir1, save_dir2)
+    # generate the images
+    generate_images(model, test_loader, device, save_dir1, save_dir2)
 
-        # temp code to flip the images
-        # folders = ['snap1', 'fluid', 'particle']
-        # for folder in folders:
-        #     path = os.path.join(base_path, folder)
-        #     for i in tqdm(range(10000), desc='Loading images from ' + folder):
-        #         image = plt.imread(os.path.join(path, str(i) + '.tif'))
-        #         # flip the image
-        #         image = np.flipud(np.fliplr(image)).copy()
-        #         # save the image back
-        #         plt.imsave(os.path.join(path, str(i) + '.tiff'), image)
-        #         os.remove(os.path.join(path, str(i) + '.tif'))
-        #         # rename to .tif
-        #         rename_files(path)
+    print('Images generated successfully')

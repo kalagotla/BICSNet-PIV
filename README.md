@@ -23,42 +23,65 @@ BICSNet corrects **particle inertia bias** in PIV measurements, improving the fi
 ## 📂 Repository Structure
 
 ```
-BICSNet_module/
-│── data/                # Sample synthetic & experimental datasets
-│   ├── synthetic/       # syPIV-generated images (subset)
-│   └── experimental/    # Representative pre-processed PIV patches
+BICSNet-PIV/
+│── data/
+│   └── test_images/
+│       ├── snap1/                   # Input image A (*.tif)
+│       ├── particle/                # Input image B (*.tif)
+│       ├── fluid/                   # Ground truth (*.tif)
+│       └── scalars.csv              # Optional (mach, reynolds number)
 │
-│── model/               # Network definitions
-│── checkpoints/         # Pre-trained BICSNet weights
-│── scripts/             # Preprocessing & figure reproduction scripts
-│   ├── preprocess_exp.py
-│   ├── reproduce_fig22.py
-│   └── reproduce_fig24.py
+│── checkpoints/
+│   └── best_model.pth               # Trained BICSNet weights
 │
-│── train.py             # Training loop
-│── evaluate.py          # Model evaluation
-│── requirements.txt     # Dependencies
-│── README.md            # This file
+│── src/
+│   ├── bicsnet.py                   # Model definition
+│   ├── loader.py                    # Dataset + transforms
+│   └── pivnet_image_gen.py          # Inference and image generation
+│
+│── analysis.ipynb                   # Optional notebook
+│── README.md                        # This file
+│── pyproject.toml                   # Project configuration (uv)
+│── .python-version                  # Pinned Python version (3.12)
 ```
 
 ---
 
-## ⚙️ Installation
+## ⚙️ Installation (uv + Python 3.12)
+
+This repo uses `uv` for environment management and locking.
 
 ```bash
-git clone https://github.com/<your-username>/BICSNet_module.git
-cd BICSNet_module
-conda create -n bicsnet python=3.10
-conda activate bicsnet
-pip install -r requirements.txt
+# 1) Install uv (if not already)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 2) Clone and enter the project
+git clone https://github.com/<your-username>/BICSNet-PIV.git
+cd BICSNet-PIV
+
+# 3) Create a clean Python 3.12 virtual environment
+uv venv --python 3.12 .venv
+source .venv/bin/activate
+
+# 4) Minimal runtime deps (start small; add as needed)
+uv pip install torch torchvision
+# Common extras used by scripts (optional, install on demand)
+uv pip install scikit-image scikit-learn seaborn tqdm
+
+# 5) (Optional) Jupyter kernel
+python -m ipykernel install --user --name bicsnet-piv --display-name "Python (BICSNet-PIV)"
 ```
 
-**Dependencies:**  
-- Python ≥ 3.10  
-- PyTorch ≥ 2.0  
-- OpenPIV  
-- NumPy, SciPy, Matplotlib, scikit-image, pandas  
-- tqdm  
+Notes:
+- Python pinned to 3.12 for PyTorch compatibility on macOS x86_64.
+- If you see NumPy ABI warnings with PyTorch, use `uv pip install "numpy<2"`.
+
+**Minimal Dependencies (core):**
+- Python 3.12
+- PyTorch (CPU): `torch`, `torchvision`
+
+**Optional (commonly used):**
+- `scikit-image`, `scikit-learn`, `seaborn`, `tqdm`, `pandas`, `matplotlib`, `tifffile`
 
 ---
 
@@ -99,24 +122,19 @@ Training details (as in paper):
 
 ---
 
-## 🔍 Evaluation
+## 🔍 Inference (Image Generation)
 
-Evaluate on synthetic test set:  
+Generate model outputs for all images in `data/test_images/`:
+
 ```bash
-python evaluate.py \
-  --data ./data/synthetic/test/ \
-  --checkpoint ./checkpoints/bicsnet.pth
+source .venv/bin/activate
+python src/pivnet_image_gen.py
 ```
 
-Reproduce **Figure 22 (PIV vs BICSNet vs CFD)**:  
-```bash
-python scripts/reproduce_fig22.py
-```
-
-Reproduce **Figure 24 (Shock interaction)**:  
-```bash
-python scripts/reproduce_fig24.py
-```
+Behavior:
+- Automatically selects device: CUDA > MPS (Apple Silicon) > CPU (Intel defaults to CPU).
+- Loads checkpoint from `checkpoints/best_model.pth`.
+- Saves outputs to `data/test_images/model_outputs1/` and `model_outputs2/`.
 
 ---
 

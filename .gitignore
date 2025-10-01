@@ -61,11 +61,11 @@ runs/
 wandb/
 lightning_logs/
 
-# Model artifacts
+# Model artifacts (ignore for now)
 *.pth
-*.pt
-model/**/checkpoints/
-checkpoints/
+# *.pt
+# model/**/checkpoints/
+# checkpoints/
 
 # Images and large binary artifacts
 *.bin
