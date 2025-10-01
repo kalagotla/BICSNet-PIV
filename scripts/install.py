@@ -64,32 +64,21 @@ def pip_install(python_bin: str, packages: list[str]) -> None:
     run([python_bin, "-m", "pip", "install", *packages])
 
 
-def ensure_uv_in_venv(python_bin: str) -> str | None:
-    """Ensure uv is available; attempt to install it into the venv if missing.
-
-    Returns the uv executable path if available, else None.
-    """
-    uv = shutil.which("uv")
-    if uv:
-        return uv
-    # Try to install uv into the venv
-    try:
-        run([python_bin, "-m", "pip", "install", "uv"])  # uv publishes wheels
-        uv_local = shutil.which("uv")
-        return uv_local
-    except SystemExit:
-        return None
-
-
 def uv_install(python_bin: str, packages: list[str]) -> None:
     if not packages:
         return
-    uv = ensure_uv_in_venv(python_bin)
-    if not uv:
-        # Last resort fallback handled by caller based on --pip flag
-        raise SystemExit("uv is required unless --pip is specified. Failed to install uv.")
+    # Try to run uv via the venv's Python first; install if missing
+    try:
+        run([python_bin, "-m", "uv", "--version"])
+    except SystemExit:
+        # Install uv into the venv and retry
+        try:
+            run([python_bin, "-m", "pip", "install", "uv"])  # uv publishes wheels
+            run([python_bin, "-m", "uv", "--version"])  # verify
+        except SystemExit:
+            raise SystemExit("uv is required unless --pip is specified. Failed to install uv into the virtual environment.")
     # Target the specific interpreter using uv pip -p
-    run([uv, "pip", "-p", python_bin, "install", *packages])
+    run([python_bin, "-m", "uv", "pip", "-p", python_bin, "install", *packages])
 
 
 def read_pyproject() -> dict:
