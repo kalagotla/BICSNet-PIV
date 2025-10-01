@@ -12,8 +12,8 @@ from tqdm import tqdm
 import seaborn as sns
 from pathlib import Path
 from torch.utils.data import DataLoader
-# Strip the "module." prefix from all keys -- to run on CPU
 from collections import OrderedDict
+from huggingface_hub import hf_hub_download
 sns.set_theme('paper')
 
 # set the default data type to float64
@@ -113,6 +113,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--checkpoint', type=str, default='./checkpoints/best_model.pth', help='Path to model checkpoint')
     parser.add_argument('--batch-size', type=int, default=8, help='Batch size for inference')
     parser.add_argument('--limit', type=int, default=None, help='Limit total number of images to generate')
+    # Hugging Face fallback
+    parser.add_argument('--hf-repo', type=str, default='kalagotla/BICSNet', help='Hugging Face repo for checkpoint')
+    parser.add_argument('--hf-file', type=str, default='best_model.pth', help='Checkpoint filename in HF repo')
     # Model configuration
     parser.add_argument('--num-encoder', type=int, default=5, help='Number of encoder layers')
     parser.add_argument('--num-decoder', type=int, default=5, help='Number of decoder layers')
@@ -165,7 +168,17 @@ if __name__ == "__main__":
     # Resolve checkpoint path
     ckpt_path = args.checkpoint if os.path.isabs(args.checkpoint) else os.path.join(model_dir, os.path.basename(args.checkpoint))
     if not os.path.exists(ckpt_path):
-        raise FileNotFoundError(f"Checkpoint not found at {ckpt_path}")
+        # Attempt auto-download from Hugging Face if running as a script (shell)
+        try:
+            Path(model_dir).mkdir(parents=True, exist_ok=True)
+            downloaded_path = hf_hub_download(repo_id=args.hf_repo, filename=args.hf_file, local_dir=model_dir, local_dir_use_symlinks=False)
+            # If user requested a specific checkpoint path, ensure it exists at that location
+            if os.path.abspath(downloaded_path) != os.path.abspath(ckpt_path):
+                # copy the file to desired path
+                import shutil
+                shutil.copy2(downloaded_path, ckpt_path)
+        except Exception as e:
+            raise FileNotFoundError(f"Checkpoint not found at {ckpt_path} and failed to download from Hugging Face ({args.hf_repo}/{args.hf_file}): {e}")
     state_dict = torch.load(ckpt_path, map_location=device)
 
     # Load the state dict robustly regardless of DataParallel prefixing

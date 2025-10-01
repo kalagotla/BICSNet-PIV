@@ -13,10 +13,8 @@ BICSNet corrects **particle inertia bias** in PIV measurements, improving the fi
 - **Problem**: Tracer particles in supersonic flows lag behind fluid motion due to inertia, causing systematic velocity errors across shocks.  
 - **Solution**: A physics-aware CNN architecture (bilateral + U-Net inspired) trained on synthetic datasets, conditioned on Mach and Reynolds numbers, to reduce inertia bias.  
 - **Contributions**:
-  - Open-source code for training and inference.
-  - Representative synthetic datasets and sample experimental patches.
-  - Preprocessing scripts for experimental PIV data.
-  - Trained model checkpoints for reproducibility.
+  - Open-source model capable of reducing particle inertia bias was provided.
+  - A test shock (Mach 2.5) was provided that was not used in the training process to explain the workflow.
 
 ---
 
@@ -90,16 +88,12 @@ Notes:
 - 300 testing cases (2 Mach numbers × 3 deflection angles).  
 - Each case → 128 image pairs (snapshots + ground truth).  
 
-➡️ **Representative dataset samples:** [Zenodo link / Google Drive placeholder]
-
 ### Experimental Data (FSU PSWT)
 - Mach 2 shock-interaction PIV dataset.  
 - Cropped into 256×256 patches with intensity normalization.  
 - Full dataset cannot be shared, but representative samples are included.  
 
 ---
-
-## 🏋️ Training
 
 Example command:  
 ```bash
@@ -126,6 +120,7 @@ Generate model outputs for all images in `data/test_images/`:
 
 ```bash
 source .venv/bin/activate
+# uses local checkpoints/best_model.pth if present; otherwise auto-downloads from HF
 python src/pivnet_image_gen.py
 ```
 
@@ -133,6 +128,21 @@ Behavior:
 - Automatically selects device: CUDA > MPS (Apple Silicon) > CPU (Intel defaults to CPU).
 - Loads checkpoint from `checkpoints/best_model.pth`.
 - Saves outputs to `data/test_images/model_outputs1/` and `model_outputs2/`.
+
+### Using the public Hugging Face checkpoint
+
+The model weights are hosted publicly:
+
+- Hugging Face repo: [`kalagotla/BICSNet`](https://huggingface.co/kalagotla/BICSNet/tree/main)
+
+If `checkpoints/best_model.pth` is missing, the script will attempt to download `best_model.pth` from the repo above automatically. You can also specify/override explicitly:
+
+```bash
+python src/pivnet_image_gen.py \
+  --checkpoint ./checkpoints/best_model.pth \
+  --hf-repo kalagotla/BICSNet \
+  --hf-file best_model.pth
+```
 
 ---
 
@@ -145,15 +155,6 @@ Behavior:
 | Mach 7.6 (OOD)        | L2-norm | 1.81      | 1.27           | **30%**     |
 
 ---
-
-## 🧩 Reproducibility Checklist
-
-✔ Model architecture & assumptions documented  
-✔ Dataset splits & preprocessing described  
-✔ Hyperparameters & training runs specified  
-✔ Evaluation metrics & scripts provided  
-✔ Trained models included  
-✔ Hardware/runtime reported  
 
 ---
 
@@ -168,12 +169,12 @@ MIT License. See [LICENSE](LICENSE) for details.
 If you use this code or datasets, please cite:
 
 ```bibtex
-@article{kalagotla2025bicsnet,
-  title={Deep Learning Based Particle Inertia Bias Corrector for Shock-Dominated PIV Data},
-  author={Kalagotla, Dilip and Cuppoletti, Daniel and Orkwis, Paul and Hernandez-Lichtl, Kevin and Gustavsson, Jonas and Kumar, Rajan},
-  journal={Experiments in Fluids},
-  year={2025},
-  note={Submitted}
+@software{kalagotla2025bicsnetpiv,
+  title = {BICSNet-PIV: Bilateral Inertia-Correction Sparse Network},
+  author = {Kalagotla, Dilip and Cuppoletti, Daniel and Orkwis, Paul and Hernandez-Lichtl, Kevin and Gustavsson, Jonas and Kumar, Rajan},
+  year = {2025},
+  url = {https://github.com/kalagotla/BICSNet-PIV},
+  note = {GitHub repository. MIT License.}
 }
 ```
 
