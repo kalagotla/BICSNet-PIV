@@ -95,7 +95,7 @@ Notes:
 
 ### Synthetic Data (syPIV + LPT)
 - 600 training cases (4 Mach numbers × 3 deflection angles × particle specs).  
-- 300 testing cases (2 Mach numbers × 3 deflection angles).  
+- 300 testing cases (2 Mach numbers × 3 deflection angles x particle specs).  
 - Each case → 128 image pairs (snapshots + ground truth).  
 
 ### Experimental Data (FSU PSWT)
